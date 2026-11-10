@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>السبحة الإلكترونية مع التقويم والمزامنة التلقائية</title>
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --card-bg: #1e293b;
+            --card-header: #334155;
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.35);
+            --primary-dark: #059669;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(16, 185, 129, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #1e293b 0%, #0b1120 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 24px 16px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 520px;
+            background: var(--card-bg);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* شريط التنقل العلوي بين السبحة والتقويم */
+        .tab-nav {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        /* شريط حالة ملف CSV */
+        .file-sync-bar {
+            background: rgba(15, 23, 42, 0.4);
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            gap: 8px;
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #64748b;
+        }
+
+        .status-dot.connected {
+            background-color: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .btn-link-file {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-link-file:hover {
+            background: rgba(56, 189, 248, 0.22);
+            transform: translateY(-1px);
+        }
+
+        /* المحتوى الرئيسي */
+        .tab-content {
+            padding: 24px 20px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* اختيار الذكر وزر التبديل */
+        .dhikr-picker-container {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+        }
+
+        .dhikr-picker-header {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-align: right;
+        }
+
+        .dhikr-controls-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .dhikr-selector {
+            flex: 1;
+            background: #0f172a;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            text-align: right;
+            transition: border-color 0.2s;
+        }
+
+        .dhikr-selector:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-cycle-dhikr {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--primary);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cycle-dhikr:hover {
+            background: var(--primary);
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-cycle-dhikr:active {
+            transform: translateY(0);
+        }
+
+        /* الدائرة التفاعلية للعداد */
+        .counter-wrapper {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+        }
+
+        .progress-circle-bg {
+            stroke: #334155;
+        }
+
+        .progress-circle {
+            stroke: var(--primary);
+            transition: stroke-dashoffset 0.15s ease;
+            transform-origin: 50% 50%;
+        }
+
+        .tap-button {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at 35% 35%, #334155 0%, #0f172a 100%);
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.1), 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
+            outline: none;
+        }
+
+        .tap-button:hover {
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.15), 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .tap-button:active {
+            transform: scale(0.96);
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.8), 0 0 22px var(--primary-glow);
+        }
+
+        .count-display {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+        }
+
+        .tap-text {
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-top: 6px;
+        }
+
+        /* الإحصائيات اليومية السريعة */
+        .counter-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 24px 0 16px 0;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .counter-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+        }
+
+        .btn-danger:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* ========== شاشة التقويم ========== */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .cal-nav-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .cal-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .cal-month-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .weekdays-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .cal-day {
+            min-height: 56px;
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cal-day:hover {
+            border-color: var(--border-focus);
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .cal-day.empty {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .cal-day.today {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .cal-day.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .cal-day-number {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .cal-day-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--primary);
+            border-radius: 8px;
+            padding: 2px 4px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .cal-day-badge.zero {
+            background: transparent;
+            color: #475569;
+        }
+
+        /* تفاصيل اليوم المحدد */
+        .day-breakdown-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+
+        .breakdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .breakdown-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .breakdown-total {
+            font-size: 0.9rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .breakdown-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 6px 12px;
+            border-radius: 10px;
+        }
+
+        .breakdown-item-name {
+            color: var(--text-main);
+        }
+
+        .breakdown-item-count {
+            font-weight: 700;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- أزرار التبديل العلوية -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('counterTab', this)">📿 السبحة</button>
+            <button class="tab-btn" onclick="switchTab('calendarTab', this)">📅 التقويم والنشاط</button>
+        </div>
+
+        <!-- شريط ملف CSV والمزامنة اللحظية -->
+        <div class="file-sync-bar">
+            <div class="sync-status">
+                <span id="syncDot" class="status-dot"></span>
+                <span id="syncLabel">ملف CSV: غير متصل (يحفظ في ذاكرة المتصفح)</span>
+            </div>
+            <div>
+                <button id="btnLinkCSV" class="btn-link-file" onclick="handleLinkCSV()">📂 ربط ملف CSV للحفظ الفوري</button>
+            </div>
+        </div>
+
+        <!-- تبويب 1: السبحة -->
+        <div id="counterTab" class="tab-content active">
+            <div class="dhikr-picker-container">
+                <div class="dhikr-picker-header">الذِكر الحالي:</div>
+                <div class="dhikr-controls-row">
+                    <select id="dhikrSelect" class="dhikr-selector" onchange="onDhikrChange()">
+                        <option value="سُبْحَانَ اللَّهِ">سُبْحَانَ اللَّهِ</option>
+                        <option value="الْحَمْدُ لِلَّهِ">الْحَمْدُ لِلَّهِ</option>
+                        <option value="لَا إِلَهَ إِلَّا اللَّهُ">لَا إِلَهَ إِلَّا اللَّهُ</option>
+                        <option value="اللَّهُ أَكْبَرُ">اللَّهُ أَكْبَرُ</option>
+                        <option value="أَسْتَغْفِرُ اللَّهَ">أَسْتَغْفِرُ اللَّهَ</option>
+                        <option value="لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ">لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ</option>
+                        <option value="سُبْحَانَ اللَّهِ وَبِحَمْدِهِ">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</option>
+                        <option value="اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ">اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ</option>
+                    </select>
+                    <button class="btn-cycle-dhikr" onclick="cycleToNextDhikr()">🔄 تغيير الذكر</button>
+                </div>
+            </div>
+
+            <!-- الدائرة التفاعلية للعداد -->
+            <div class="counter-wrapper">
+                <svg class="progress-ring" width="240" height="240">
+                    <circle class="progress-circle-bg" stroke-width="8" fill="transparent" r="110" cx="120" cy="120"/>
+                    <circle id="progressCircle" class="progress-circle" stroke-width="8" fill="transparent" r="110" cx="120" cy="120"/>
+                </svg>
+
+                <button class="tap-button" id="tapBtn" onclick="incrementTasbih()">
+                    <span id="currentDhikrCount" class="count-display">0</span>
+                    <span class="tap-text">اضغط للتسبيح</span>
+                </button>
+            </div>
+
+            <!-- الإحصائيات اليومية السريعة -->
+            <div class="counter-stats">
+                <div class="stat-card">
+                    <div id="todayTotalCount" class="stat-value">0</div>
+                    <div class="stat-label">مجموع تسبيحات اليوم</div>
+                </div>
+                <div class="stat-card">
+                    <div id="cycleDisplay" class="stat-value">0 / 33</div>
+                    <div class="stat-label">دورة الذكر الحالية</div>
+                </div>
+            </div>
+
+            <!-- أزرار التحكم -->
+            <div class="counter-actions">
+                <button class="btn-action" onclick="resetCurrentDhikr()">🔄 تصفير الذكر الحالي</button>
+                <button class="btn-action btn-danger" onclick="resetTodayAll()">🧹 تصفير إجمالي اليوم</button>
+            </div>
+        </div>
+
+        <!-- تبويب 2: التقويم وسجل الأيام -->
+        <div id="calendarTab" class="tab-content">
+            <div class="calendar-header">
+                <button class="cal-nav-btn" onclick="prevMonth()">▶</button>
+                <div id="calMonthTitle" class="cal-month-title"></div>
+                <button class="cal-nav-btn" onclick="nextMonth()">◀</button>
+            </div>
+
+            <!-- أيام الأسبوع -->
+            <div class="weekdays-grid">
+                <div>سبت</div>
+                <div>أحد</div>
+                <div>إثنين</div>
+                <div>ثلاثاء</div>
+                <div>أربعاء</div>
+                <div>خميس</div>
+                <div>جمعة</div>
+            </div>
+
+            <!-- شبكة الأيام -->
+            <div id="calendarGrid" class="calendar-grid"></div>
+
+            <!-- كارت تفاصيل اليوم المحدد -->
+            <div id="dayBreakdownCard" class="day-breakdown-card">
+                <div class="breakdown-header">
+                    <div id="breakdownDateTitle" class="breakdown-title">تفاصيل اليوم</div>
+                    <div id="breakdownTotalTitle" class="breakdown-total">الإجمالي: 0</div>
+                </div>
+                <ul id="breakdownList" class="breakdown-list">
+                    <!-- يتم بناؤها بالجافاسكربت -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. إدارة البيانات وحالة التطبيق
+        // ==========================================
+        const DEFAULT_DHIKRS = [
+            "سُبْحَانَ اللَّهِ",
+            "الْحَمْدُ لِلَّهِ",
+            "لَا إِلَهَ إِلَّا اللَّهُ",
+            "اللَّهُ أَكْبَرُ",
+            "أَسْتَغْفِرُ اللَّهَ",
+            "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+            "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+            "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ"
+        ];
+
+        let tasbihData = JSON.parse(localStorage.getItem('tasbih_daily_records') || '{}');
+        let fileHandle = null;
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let selectedCalendarDate = getTodayDateKey();
+
+        // إعدادات الـ SVG للدائرة
+        const progressCircle = document.getElementById('progressCircle');
+        const radius = progressCircle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = circumference;
+
+        function getTodayDateKey() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function ensureTodayRecord(dateKey) {
+            if (!tasbihData[dateKey]) {
+                tasbihData[dateKey] = {};
+            }
+        }
+
+        function getDhikrCount(dateKey, dhikr) {
+            return (tasbihData[dateKey] && tasbihData[dateKey][dhikr]) || 0;
+        }
+
+        function getDayTotal(dateKey) {
+            if (!tasbihData[dateKey]) return 0;
+            return Object.values(tasbihData[dateKey]).reduce((acc, c) => acc + (Number(c) || 0), 0);
+        }
+
+        // ==========================================
+        // 2. تحديث الواجهة والعداد
+        // ==========================================
+        function updateCounterUI() {
+            const today = getTodayDateKey();
+            ensureTodayRecord(today);
+            const currentDhikr = document.getElementById('dhikrSelect').value;
+            const dhikrCount = getDhikrCount(today, currentDhikr);
+            const dayTotal = getDayTotal(today);
+
+            // رقم العداد الرئيسي
+            document.getElementById('currentDhikrCount').textContent = dhikrCount;
+            document.getElementById('todayTotalCount').textContent = dayTotal;
+
+            // نسبة دائرة الـ 33
+            const cycleTarget = 33;
+            const cycleRemainder = dhikrCount % cycleTarget;
+            const inCycle = (cycleRemainder === 0 && dhikrCount > 0) ? cycleTarget : cycleRemainder;
+            document.getElementById('cycleDisplay').textContent = `${inCycle} / ${cycleTarget}`;
+
+            const percent = (inCycle / cycleTarget) * 100;
+            const offset = circumference - (percent / 100) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        function onDhikrChange() {
+            updateCounterUI();
+        }
+
+        // زر الانتقال إلى الذكر التالي
+        function cycleToNextDhikr() {
+            const selectEl = document.getElementById('dhikrSelect');
+            let nextIndex = (selectEl.selectedIndex + 1) % selectEl.options.length;
+            selectEl.selectedIndex = nextIndex;
+            updateCounterUI();
+        }
+
+        // زيادة العداد عند الضغط
+        async function incrementTasbih() {
+            const today = getTodayDateKey();
+            ensureTodayRecord(today);
+            const currentDhikr = document.getElementById('dhikrSelect').value;
+
+            tasbihData[today][currentDhikr] = (tasbihData[today][currentDhikr] || 0) + 1;
+
+            // حفظ بالذاكرة المحلية لضمان عدم الضياع
+            localStorage.setItem('tasbih_daily_records', JSON.stringify(tasbihData));
+
+            updateCounterUI();
+
+            // حفظ مباشر وهادئ في ملف CSV بدون تنبيهات مزعجة
+            await autoSaveToCSV();
+        }
+
+        function resetCurrentDhikr() {
+            const today = getTodayDateKey();
+            const currentDhikr = document.getElementById('dhikrSelect').value;
+            if (confirm(`هل أنت متأكد من تصفير عداد (${currentDhikr}) لليوم؟`)) {
+                if (tasbihData[today]) {
+                    tasbihData[today][currentDhikr] = 0;
+                    localStorage.setItem('tasbih_daily_records', JSON.stringify(tasbihData));
+                    updateCounterUI();
+                    autoSaveToCSV();
+                }
+            }
+        }
+
+        function resetTodayAll() {
+            const today = getTodayDateKey();
+            if (confirm("هل أنت متأكد من تصفير كافة تسبيحات هذا اليوم؟")) {
+                tasbihData[today] = {};
+                localStorage.setItem('tasbih_daily_records', JSON.stringify(tasbihData));
+                updateCounterUI();
+                autoSaveToCSV();
+            }
+        }
+
+        // ==========================================
+        // 3. التكامل الفوري مع ملف CSV (Live Auto-Save)
+        // ==========================================
+        function generateCSVString() {
+            const headers = ['Date', ...DEFAULT_DHIKRS, 'Total'];
+            const rows = [headers.join(',')];
+
+            const dates = Object.keys(tasbihData).sort();
+
+            for (const d of dates) {
+                const dayCounts = tasbihData[d] || {};
+                let total = 0;
+                const rowValues = [d];
+
+                for (const dhikr of DEFAULT_DHIKRS) {
+                    const c = dayCounts[dhikr] || 0;
+                    total += c;
+                    rowValues.push(c);
+                }
+                rowValues.push(total);
+                rows.push(rowValues.join(','));
+            }
+
+            return '\uFEFF' + rows.join('\r\n');
+        }
+
+        async function handleLinkCSV() {
+            if (!('showSaveFilePicker' in window)) {
+                alert("متصفحك الحالي لا يدعم File System Access API للحفظ المباشر في القرص، ولكن يتم حفظ كل شيء في ذاكرة المتصفح تلقائياً. يُنصح باستخدام Google Chrome أو Microsoft Edge.");
+                return;
+            }
+
+            try {
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: 'tasbih_records.csv',
+                    types: [{
+                        description: 'CSV Spreadsheet File',
+                        accept: { 'text/csv': ['.csv'] }
+                    }]
+                });
+
+                try {
+                    const file = await fileHandle.getFile();
+                    const text = await file.text();
+                    parseAndMergeCSV(text);
+                } catch (e) {
+                    console.log("ملف جديد تم إنشاؤه");
+                }
+
+                await writeToCSVFile();
+
+                document.getElementById('syncDot').classList.add('connected');
+                document.getElementById('syncLabel').textContent = `متصل بـ: ${fileHandle.name} (حفظ فوري)`;
+                document.getElementById('btnLinkCSV').textContent = '✅ الملف متصل';
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error("خطأ أثناء ربط الملف:", err);
+                    alert("تعذر الوصول للملف: " + err.message);
+                }
+            }
+        }
+
+        function parseAndMergeCSV(csvContent) {
+            if (!csvContent || csvContent.trim().length === 0) return;
+            const lines = csvContent.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length <= 1) return;
+
+            const headers = lines[0].split(',');
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                const dateKey = cols[0];
+                if (!dateKey) continue;
+                if (!tasbihData[dateKey]) tasbihData[dateKey] = {};
+
+                for (let j = 1; j < headers.length - 1; j++) {
+                    const dhikrName = headers[j];
+                    const val = parseInt(cols[j], 10) || 0;
+                    if (val > (tasbihData[dateKey][dhikrName] || 0)) {
+                        tasbihData[dateKey][dhikrName] = val;
+                    }
+                }
+            }
+            localStorage.setItem('tasbih_daily_records', JSON.stringify(tasbihData));
+            updateCounterUI();
+        }
+
+        async function writeToCSVFile() {
+            if (!fileHandle) return;
+            try {
+                const writable = await fileHandle.createWritable();
+                const csvData = generateCSVString();
+                await writable.write(csvData);
+                await writable.close();
+            } catch (err) {
+                console.error("فشل الحفظ المباشر في CSV:", err);
+            }
+        }
+
+        async function autoSaveToCSV() {
+            if (fileHandle) {
+                await writeToCSVFile();
+            }
+        }
+
+        // ==========================================
+        // 4. نظام التقويم وسجل الأيام
+        // ==========================================
+        const arabicMonthNames = [
+            "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+            "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+        ];
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            document.getElementById('calMonthTitle').textContent = `${arabicMonthNames[currentMonth]} ${currentYear}`;
+
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            let startDay = (firstDayOfMonth.getDay() + 1) % 7;
+
+            for (let i = 0; i < startDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'cal-day empty';
+                grid.appendChild(emptyCell);
+            }
+
+            const todayKey = getTodayDateKey();
+
+            for (let d = 1; d <= totalDaysInMonth; d++) {
+                const mStr = String(currentMonth + 1).padStart(2, '0');
+                const dStr = String(d).padStart(2, '0');
+                const dateKey = `${currentYear}-${mStr}-${dStr}`;
+
+                const dayCell = document.createElement('div');
+                dayCell.className = 'cal-day';
+
+                if (dateKey === todayKey) dayCell.classList.add('today');
+                if (dateKey === selectedCalendarDate) dayCell.classList.add('selected');
+
+                const dayNum = document.createElement('span');
+                dayNum.className = 'cal-day-number';
+                dayNum.textContent = d;
+
+                const dayTotal = getDayTotal(dateKey);
+                const badge = document.createElement('span');
+                badge.className = `cal-day-badge ${dayTotal === 0 ? 'zero' : ''}`;
+                badge.textContent = dayTotal > 0 ? dayTotal : '-';
+
+                dayCell.appendChild(dayNum);
+                dayCell.appendChild(badge);
+
+                dayCell.onclick = () => {
+                    document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected'));
+                    dayCell.classList.add('selected');
+                    selectedCalendarDate = dateKey;
+                    renderDayBreakdown(dateKey);
+                };
+
+                grid.appendChild(dayCell);
+            }
+
+            renderDayBreakdown(selectedCalendarDate);
+        }
+
+        function renderDayBreakdown(dateKey) {
+            document.getElementById('breakdownDateTitle').textContent = `تفاصيل يوم: ${dateKey}`;
+            const total = getDayTotal(dateKey);
+            document.getElementById('breakdownTotalTitle').textContent = `الإجمالي: ${total}`;
+
+            const list = document.getElementById('breakdownList');
+            list.innerHTML = '';
+
+            const dayRecord = tasbihData[dateKey] || {};
+
+            let hasEntries = false;
+            for (const dhikr of DEFAULT_DHIKRS) {
+                const count = dayRecord[dhikr] || 0;
+                if (count > 0) {
+                    hasEntries = true;
+                    const li = document.createElement('li');
+                    li.className = 'breakdown-item';
+                    li.innerHTML = `
+                        <span class="breakdown-item-name">${dhikr}</span>
+                        <span class="breakdown-item-count">${count}</span>
+                    `;
+                    list.appendChild(li);
+                }
+            }
+
+            if (!hasEntries) {
+                const emptyLi = document.createElement('li');
+                emptyLi.style.textAlign = 'center';
+                emptyLi.style.color = 'var(--text-muted)';
+                emptyLi.style.fontSize = '0.85rem';
+                emptyLi.style.padding = '10px 0';
+                emptyLi.textContent = 'لا توجد أذكار مسجلة في هذا اليوم';
+                list.appendChild(emptyLi);
+            }
+        }
+
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        // ==========================================
+        // 5. التبديل بين التبويبات
+        // ==========================================
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            if (tabId === 'calendarTab') {
+                renderCalendar();
+            } else {
+                updateCounterUI();
+            }
+        }
+
+        // تهيئة الصفحة عند التحميل
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCounterUI();
+        });
+    </script>
+</body>
+</html>
